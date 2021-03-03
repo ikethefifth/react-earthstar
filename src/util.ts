@@ -1,15 +1,13 @@
-import React from 'react';
-
-const AUTHOR_NAME_REGEX = /@(.*)\./;
+import * as React from 'react';
+import { isErr, Query, ValidatorEs4 } from 'earthstar';
 
 export function getAuthorShortName(address: string): string {
-  const result = AUTHOR_NAME_REGEX.exec(address);
-
-  if (result) {
-    return result[1];
+  const parsedAuthor = ValidatorEs4.parseAuthorAddress(address);
+  if (isErr(parsedAuthor)) {
+    return address;
   }
 
-  return address;
+  return parsedAuthor.shortname;
 }
 
 const WORKSPACE_NAME_REGEX = /\+(.*)\./;
@@ -40,4 +38,79 @@ export function useDownload() {
     window.URL.revokeObjectURL(url);
     document.body.removeChild(a);
   }, []);
+}
+
+export function makeStorageKey(customKey: string | undefined, key: string) {
+  if (!customKey) {
+    return `earthstar-peer-${key}`;
+  }
+
+  return `earthstar-peer-${customKey}-${key}`;
+}
+
+export function getLocalStorage<T>(key: string): T | null {
+  const value = localStorage.getItem(key);
+
+  if (!value) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(value);
+  } catch {
+    return null;
+  }
+}
+
+export function useMemoQueryOpts({
+  author,
+  contentLength,
+  contentLengthGt,
+  contentLengthLt,
+  continueAfter,
+  history,
+  limit,
+  limitBytes,
+  path,
+  pathEndsWith,
+  pathStartsWith,
+  timestamp,
+  timestampGt,
+  timestampLt,
+}: Query): Query {
+  return React.useMemo(() => {
+    const obj = {
+      author,
+      contentLength,
+      contentLengthGt,
+      contentLengthLt,
+      continueAfter,
+      ...(history ? { history } : {}),
+      limit,
+      limitBytes,
+      path,
+      pathEndsWith,
+      pathStartsWith,
+      timestamp,
+      timestampGt,
+      timestampLt,
+    };
+
+    return obj;
+  }, [
+    author,
+    contentLength,
+    contentLengthGt,
+    contentLengthLt,
+    continueAfter,
+    history,
+    limit,
+    limitBytes,
+    path,
+    pathEndsWith,
+    pathStartsWith,
+    timestamp,
+    timestampGt,
+    timestampLt,
+  ]);
 }

@@ -1,5 +1,6 @@
-import React from 'react';
-import { useMakeInvitation, useWorkspacePubs } from '..';
+import * as React from 'react';
+import { useMakeInvitation, useWorkspacePubs } from '../hooks';
+import CopyButton from './_CopyButton';
 
 export default function InvitationCreatorForm({
   workspaceAddress,
@@ -18,54 +19,47 @@ export default function InvitationCreatorForm({
   }, [copied]);
 
   return (
-    <div data-react-earthstar-invitation-creator-form>
+    <div data-re-invitation-creator-form>
+      <dl data-re-invitation-creator-pub-options>
+        <dt data-re-dt>{'Included pubs'}</dt>
+        <dd data-re-dd>
+          {pubs.map(pubUrl => (
+            <div
+              data-re-invitation-creator-pub-option
+              data-re-pub-item
+              key={pubUrl}
+            >
+              <input
+                data-re-checkbox
+                id={`react-earthstar-invitation-${pubUrl}-option`}
+                type="checkbox"
+                checked={!excludedPubs.includes(pubUrl)}
+                onChange={() => {
+                  const isExcluded = excludedPubs.includes(pubUrl);
+
+                  if (isExcluded) {
+                    return setExcludedPubs(pubs =>
+                      pubs.filter(url => url !== pubUrl)
+                    );
+                  }
+
+                  setExcludedPubs(pubs => [...pubs, pubUrl]);
+                }}
+              />
+              <label htmlFor={`react-earthstar-invitation-${pubUrl}-option`}>
+                {pubUrl}
+              </label>
+            </div>
+          ))}
+        </dd>
+      </dl>
       <input
-        data-react-earthstar-invitation-creator-input
-        data-react-earthstar-input
+        data-re-invitation-creator-input
+        data-re-input
         value={invitationCode}
         disabled={true}
       />
-      <button
-        data-react-earthstar-invitation-creator-button
-        data-react-earthstar-button
-        onClick={() => {
-          navigator.clipboard.writeText(invitationCode);
-          setCopied(true);
-        }}
-      >
-        {copied ? 'Copied!' : 'Copy'}
-      </button>
-      {pubs.length > 0 ? (
-        <dl data-react-earthstar-invitation-creator-pub-options>
-          <dt data-react-earthstar-dt>{'Included pubs'}</dt>
-          <dd data-react-earthstar-dd>
-            {pubs.map(pubUrl => (
-              <div key={pubUrl}>
-                <input
-                  data-react-earthstar-checkbox
-                  id={`react-earthstar-invitation-${pubUrl}-option`}
-                  type="checkbox"
-                  checked={!excludedPubs.includes(pubUrl)}
-                  onChange={() => {
-                    const isExcluded = excludedPubs.includes(pubUrl);
-
-                    if (isExcluded) {
-                      return setExcludedPubs(pubs =>
-                        pubs.filter(url => url !== pubUrl)
-                      );
-                    }
-
-                    setExcludedPubs(pubs => [...pubs, pubUrl]);
-                  }}
-                />
-                <label htmlFor={`react-earthstar-invitation-${pubUrl}-option`}>
-                  {pubUrl}
-                </label>
-              </div>
-            ))}
-          </dd>
-        </dl>
-      ) : null}
+      <CopyButton copyValue={invitationCode} />
     </div>
   );
 }

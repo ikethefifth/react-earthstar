@@ -1,16 +1,16 @@
-import React from 'react';
+import * as React from 'react';
 import { useCurrentAuthor } from '../hooks';
 
 export default function SignOutButton(
-  props: React.HTMLAttributes<HTMLButtonElement>
+  props: React.ButtonHTMLAttributes<HTMLButtonElement>
 ) {
   const [currentAuthor, setCurrentAuthor] = useCurrentAuthor();
 
   return (
     <button
       {...props}
-      data-react-earthstar-sign-out-button
-      data-react-earthstar-button
+      data-re-sign-out-button
+      data-re-button
       onClick={() => setCurrentAuthor(null)}
       disabled={currentAuthor === null}
     >

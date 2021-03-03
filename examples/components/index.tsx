@@ -1,12 +1,19 @@
-import React from 'react';
+import * as React from 'react';
 import { render } from 'react-dom';
-import { StorageMemory, ValidatorEs4 } from 'earthstar';
+import {
+  StorageMemory,
+  ValidatorEs4,
+  generateAuthorKeypair,
+  AuthorKeypair,
+} from 'earthstar';
 import {
   EarthstarPeer,
   AddWorkspaceForm,
   AuthorKeypairForm,
   AuthorKeypairUpload,
   AuthorLabel,
+  CopyAuthorAddressButton,
+  CopyAuthorSecretButton,
   CurrentAuthor,
   CurrentWorkspaceSelect,
   DisplayNameForm,
@@ -17,14 +24,19 @@ import {
   PubEditor,
   RemoveWorkspaceButton,
   SignOutButton,
+  WorkspaceCreatorForm,
   WorkspaceLabel,
   WorkspaceList,
+  SyncingCheckbox,
 } from '../../src/index';
 import '../../styles/layout.css';
+import '../../styles/junior.css';
 
 const EXAMPLE_WORKSPACE_ADDR1 = '+example.a123';
 const EXAMPLE_WORKSPACE_ADDR2 = '+gardening.a123';
 const EXAMPLE_WORKSPACE_ADDR3 = '+sailing.a123';
+
+const EXAMPLE_USER = generateAuthorKeypair('test') as AuthorKeypair;
 
 function Example({
   children,
@@ -90,6 +102,8 @@ function Examples() {
           [EXAMPLE_WORKSPACE_ADDR2]: ['https://b.pub/'],
           [EXAMPLE_WORKSPACE_ADDR3]: ['https://c.pub/'],
         }}
+        initIsLive={false}
+        initCurrentAuthor={EXAMPLE_USER}
       >
         <hr />
         <h2>Adding, removing and editing workspaces</h2>
@@ -105,11 +119,20 @@ function Examples() {
         >
           <AddWorkspaceForm />
         </Example>
+        <Example title={'WorkspaceCreatorForm'}>
+          <WorkspaceCreatorForm />
+        </Example>
         <Example
           title={'InvitationRedemptionForm'}
           notes={'Add a workspace using an Earthstar invitation code'}
         >
           <InvitationRedemptionForm />
+        </Example>
+        <Example
+          title={'SyncingCheckbox'}
+          notes={'Toggle whether a workspace is syncing or not'}
+        >
+          <SyncingCheckbox />
         </Example>
         <Example
           title={'InvitationCreatorForm'}
@@ -163,7 +186,7 @@ function Examples() {
           <SignOutButton />
         </Example>
         <hr />
-        <h2>Current author: etc</h2>
+        <h2>Current author: other actions</h2>
         <Example
           title={'CurrentAuthor'}
           notes="Display an <AuthorLabel> which abbreviates the currenly signed in author's address"
@@ -171,8 +194,20 @@ function Examples() {
           <CurrentAuthor />
         </Example>
         <Example
+          title={'CopyAuthorAddressButton'}
+          notes="A button which copies the current author's address to the clipboard"
+        >
+          <CopyAuthorAddressButton />
+        </Example>
+        <Example
+          title={'CopyAuthorSecretButton'}
+          notes="A button which copies the current author's secret to the clipboard"
+        >
+          <CopyAuthorSecretButton />
+        </Example>
+        <Example
           title={'DisplayNameForm'}
-          notes="Change the display name of the currently signed in author, in a given workspace"
+          notes="Change the display name of the currently signed in author, in a given workspace, by writing a document to /about/~@zzzz.bbbbbb/displayName.txt"
         >
           <DisplayNameForm workspaceAddress={EXAMPLE_WORKSPACE_ADDR1} />
         </Example>

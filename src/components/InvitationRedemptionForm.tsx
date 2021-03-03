@@ -1,8 +1,18 @@
-import React from 'react';
+import * as React from 'react';
 import { isErr } from 'earthstar';
 import Alert from '@reach/alert';
-import { useInvitation, useWorkspaces, usePubs } from '../hooks';
-import { WorkspaceLabel } from '../components';
+import {
+  useInvitation,
+  useWorkspaces,
+  usePubs,
+  useCurrentWorkspace,
+} from '../hooks';
+import WorkspaceLabel from '../components/WorkspaceLabel';
+import {
+  WhatIsAPub,
+  WhatIsAWorkspace,
+  WhereToGetInvitationCode,
+} from './guidance/guidances';
 
 export default function InvitationRedemptionForm({
   onRedeem,
@@ -11,6 +21,7 @@ export default function InvitationRedemptionForm({
 }) {
   const workspaces = useWorkspaces();
   const [pubs] = usePubs();
+  const [, setCurrentWorkspace] = useCurrentWorkspace();
   const [code, setCode] = React.useState('');
   const result = useInvitation(code);
 
@@ -60,104 +71,116 @@ export default function InvitationRedemptionForm({
   };
 
   return (
-    <form
-      data-react-earthstar-invitatiton-redemption-form
-      onSubmit={e => {
-        e.preventDefault();
+    <>
+      <form
+        data-re-invitatiton-redemption-form
+        onSubmit={e => {
+          e.preventDefault();
 
-        if (!isErr(result)) {
-          const { workspace, pubs } = result;
-          result.redeem(excludedPubs);
-          if (onRedeem) {
-            onRedeem(
-              workspace,
-              pubs.filter(pubUrl => !excludedPubs.includes(pubUrl))
-            );
+          if (!isErr(result)) {
+            const { workspace, pubs } = result;
+            result.redeem(excludedPubs);
+            if (onRedeem) {
+              onRedeem(
+                workspace,
+                pubs.filter(pubUrl => !excludedPubs.includes(pubUrl))
+              );
+            }
+            setCode('');
+            setUncheckedPubs([]);
+            setCurrentWorkspace(workspace);
           }
-          setCode('');
-          setUncheckedPubs([]);
-        }
-      }}
-    >
-      <label
-        data-react-earthstar-invitation-code-label
-        data-react-earthstar-label
+        }}
       >
-        {'Paste invitation code'}
-      </label>
-      <input
-        data-react-earthstar-invitation-code-input
-        data-react-earthstar-input
-        value={code}
-        onChange={e => setCode(e.target.value)}
-        placeholder={'earthstar:///?workspace=...'}
-      />
-      {isErr(result) && code.length > 0 ? (
-        <Alert data-react-earthstar-invitation-code-alert>
-          {result.message}
-        </Alert>
-      ) : null}
-      {!isErr(result) ? (
-        <dl data-react-earthstar-invitation-description>
-          <dt data-react-earthstar-dt>{'Workspace'}</dt>
-          <dd data-react-earthstar-dd>
-            {result.workspace}
-            {workspaces.includes(result.workspace) ? ' (already added)' : null}
-          </dd>
-          <dt data-react-earthstar-dt>{'Pubs'}</dt>
-          <dd data-react-earthstar-dd>
-            {result.pubs.length > 0
-              ? result.pubs.map(pubUrl => (
-                  <div key={pubUrl}>
-                    <input
-                      data-react-earthstar-checkbox
-                      id={`react-earthstar-invitation-${pubUrl}-option`}
-                      type="checkbox"
-                      disabled={preexistingPubs.includes(pubUrl)}
-                      checked={
-                        !excludedPubs.includes(pubUrl) ||
-                        preexistingPubs.includes(pubUrl)
-                      }
-                      onChange={() => {
-                        if (preexistingPubs.includes(pubUrl)) {
-                          return;
-                        }
+        <label data-re-invitation-code-label data-re-label>
+          {'Paste invitation code'}
+        </label>
+        <input
+          data-re-invitation-code-input
+          data-re-input
+          value={code}
+          onChange={e => setCode(e.target.value)}
+          placeholder={'earthstar:///?workspace=...'}
+        />
+        {isErr(result) && code.length > 0 ? (
+          <Alert data-re-invitation-code-alert>{result.message}</Alert>
+        ) : null}
+        {!isErr(result) ? (
+          <fieldset data-re-fieldset>
+            <legend data-re-legend>{'Invitation Details'}</legend>
+            <dl data-re-invitation-description key={'invitation-description'}>
+              <dt data-re-dt>{'Workspace'}</dt>
+              <dd data-re-dd>
+                <span data-re-workspace-item>{result.workspace}</span>
+                {workspaces.includes(result.workspace)
+                  ? ' (already added)'
+                  : null}
+              </dd>
+              <dt data-re-dt>{'Pub servers'}</dt>
+              <dd data-re-dd>
+                {result.pubs.length > 0
+                  ? result.pubs.map(pubUrl => (
+                      <div
+                        key={pubUrl}
+                        data-re-invitation-redemption-pub-list-item
+                      >
+                        <span data-re-pub-item key={pubUrl}>
+                          <input
+                            data-re-checkbox
+                            id={`react-earthstar-invitation-${pubUrl}-option`}
+                            type="checkbox"
+                            disabled={preexistingPubs.includes(pubUrl)}
+                            checked={
+                              !excludedPubs.includes(pubUrl) ||
+                              preexistingPubs.includes(pubUrl)
+                            }
+                            onChange={() => {
+                              if (preexistingPubs.includes(pubUrl)) {
+                                return;
+                              }
 
-                        const isExcluded = excludedPubs.includes(pubUrl);
+                              const isExcluded = excludedPubs.includes(pubUrl);
 
-                        if (isExcluded) {
-                          return setUncheckedPubs(pubs =>
-                            pubs.filter(url => url !== pubUrl)
-                          );
-                        }
+                              if (isExcluded) {
+                                return setUncheckedPubs(pubs =>
+                                  pubs.filter(url => url !== pubUrl)
+                                );
+                              }
 
-                        setUncheckedPubs(pubs => [...pubs, pubUrl]);
-                      }}
-                    />
-                    <label
-                      htmlFor={`react-earthstar-invitation-${pubUrl}-option`}
-                    >
-                      {pubUrl}
-                      {pubs[result.workspace]?.includes(pubUrl)
-                        ? ' (already added)'
-                        : null}
-                    </label>
-                  </div>
-                ))
-              : 'No pubs will be added'}
-          </dd>
-        </dl>
-      ) : null}
-      {code.length > 0 ? (
-        <button
-          data-react-earthstar-invitation-redemption-button
-          data-react-earthstar-button
-          type={'submit'}
-          disabled={isThereAnythingToAdd === false}
-        >
-          {getButtonLabel()}
-        </button>
-      ) : null}
-    </form>
+                              setUncheckedPubs(pubs => [...pubs, pubUrl]);
+                            }}
+                          />
+                          <label
+                            htmlFor={`react-earthstar-invitation-${pubUrl}-option`}
+                          >
+                            {pubUrl}
+                            {pubs[result.workspace]?.includes(pubUrl)
+                              ? ' (already added)'
+                              : null}
+                          </label>
+                        </span>
+                      </div>
+                    ))
+                  : 'No pubs will be added'}
+              </dd>
+            </dl>
+          </fieldset>
+        ) : null}
+        {code.length > 0 ? (
+          <button
+            key={'redeem-button'}
+            data-re-invitation-redemption-button
+            data-re-button
+            type={'submit'}
+            disabled={isThereAnythingToAdd === false}
+          >
+            {getButtonLabel()}
+          </button>
+        ) : null}
+      </form>
+      <WhatIsAWorkspace />
+      <WhereToGetInvitationCode />
+      <WhatIsAPub />
+    </>
   );
 }

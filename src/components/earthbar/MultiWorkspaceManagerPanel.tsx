@@ -1,8 +1,14 @@
-import React from 'react';
-import { EarthbarTabPanel } from './Earthbar';
-import { WorkspaceLabel, SyncingCheckbox } from '..';
-import { useWorkspaces } from '../..';
+import * as React from 'react';
+import WorkspaceLabel from '../WorkspaceLabel';
+import SyncingCheckbox from '../SyncingCheckbox';
+import InvitationRedemptionForm from '../InvitationRedemptionForm';
+import WorkspaceCreatorForm from '../WorkspaceCreatorForm';
+import { useWorkspaces } from '../../hooks';
 import { WorkspaceOptions } from './WorkspaceOptions';
+import { EarthbarContext } from './contexts';
+import EarthbarTabPanel from './EarthbarTabPanel';
+import { WhatIsAWorkspace } from '../guidance/guidances';
+import DisplayNameForm from '../DisplayNameForm';
 
 type WorkspaceManagerState =
   | { screen: 'list' }
@@ -33,16 +39,13 @@ function WorkspaceRow({
   navToWorkspace: () => void;
 }) {
   return (
-    <li data-react-earthstar-workspace-row>
-      <div>
-        <WorkspaceLabel
-          data-react-earthstar-workspace-row-address
-          address={address}
-        />
+    <li data-re-workspace-row>
+      <div data-re-workspace-item>
+        <WorkspaceLabel data-re-workspace-row-address address={address} />
       </div>
       <button
-        data-react-earthstar-multiworkspace-settings-button
-        data-react-earthstar-button
+        data-re-multiworkspace-settings-button
+        data-re-button
         onClick={navToWorkspace}
       >
         {'Settings'}
@@ -61,17 +64,35 @@ function WorkspaceList({
   return (
     <div>
       <section>
-        <h2>{'Your workspaces'}</h2>
-        <SyncingCheckbox />
-        <ul data-react-earthstar-workspace-list-workspaces>
-          {workspaces.map(address => (
-            <WorkspaceRow
-              key={address}
-              navToWorkspace={() => navToWorkspace(address)}
-              address={address}
-            />
-          ))}
-        </ul>
+        <h1>{'Your workspaces'}</h1>
+        {workspaces.length > 0 ? (
+          <>
+            <SyncingCheckbox />
+            <ul data-re-workspace-list-workspaces>
+              {workspaces.map(address => (
+                <WorkspaceRow
+                  key={address}
+                  navToWorkspace={() => navToWorkspace(address)}
+                  address={address}
+                />
+              ))}
+            </ul>
+          </>
+        ) : (
+          <>
+            <p>You have no workspaces saved to this device.</p>
+            <p>
+              If you have used Earthstar on another device, you will need to add
+              your workspaces again to this device. The easiest way is to send
+              yourself invitation codes.
+            </p>
+            <p>
+              It's OK to use the same workspaces and author identity on multiple
+              devices at the same time.
+            </p>
+          </>
+        )}
+        <WhatIsAWorkspace />
       </section>
     </div>
   );
@@ -82,28 +103,65 @@ export default function MultiWorkspaceManagerPanel() {
     screen: 'list',
   });
 
+  const { setFocusedIndex, setActiveIndex } = React.useContext(EarthbarContext);
+
   return (
     <EarthbarTabPanel>
       {state.screen === 'list' ? (
-        <WorkspaceList
-          navToWorkspace={address =>
-            dispatch({ type: 'nav-workspace', address })
-          }
-        />
-      ) : (
-        <div>
-          <nav data-react-earthstar-workpace-options-header>
-            <button
-              data-react-earthstar-button
-              onClick={() => dispatch({ type: 'nav-list' })}
-            >
-              {'← Back'}
-            </button>
-            {state.address}
-          </nav>
+        <>
+          <WorkspaceList
+            navToWorkspace={address =>
+              dispatch({ type: 'nav-workspace', address })
+            }
+          />
           <hr />
-          <WorkspaceOptions workspaceAddress={state.address} />
-        </div>
+          <section>
+            <h1>{'Join a workspace'}</h1>
+            <InvitationRedemptionForm
+              onRedeem={() => {
+                setFocusedIndex(-1);
+                setActiveIndex(-1);
+              }}
+            />
+          </section>
+          <hr />
+          <section>
+            <h1>{'Make a workspace'}</h1>
+            <WorkspaceCreatorForm
+              onCreate={() => {
+                setActiveIndex(-1);
+                setFocusedIndex(-1);
+              }}
+            />
+          </section>
+        </>
+      ) : (
+        <>
+          <section>
+            <nav data-re-workpace-options-header>
+              <button
+                data-re-button
+                data-re-back-button
+                onClick={() => dispatch({ type: 'nav-list' })}
+              >
+                {'Return to all workspaces'}
+              </button>
+              {state.address}
+            </nav>
+          </section>
+          <hr />
+          <section>
+            <h1>{'Customize your identity'}</h1>
+            <DisplayNameForm workspaceAddress={state.address} />
+          </section>
+          <hr />
+          <WorkspaceOptions
+            workspaceAddress={state.address}
+            onRemove={() => {
+              dispatch({ type: 'nav-list' });
+            }}
+          />
+        </>
       )}
     </EarthbarTabPanel>
   );

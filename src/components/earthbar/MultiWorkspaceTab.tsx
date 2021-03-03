@@ -1,18 +1,27 @@
-import React from 'react';
+import * as React from 'react';
 import MultiWorkspaceManagerPanel from './MultiWorkspaceManagerPanel';
-import { EarthbarTabLabel, EarthbarTab } from './Earthbar';
-import AddWorkspaceTab from './AddWorkspaceTab';
+import EarthbarTab from './EarthbarTab';
+import EarthbarTabLabel from './EarthbarTabLabel';
+import { useCurrentWorkspace } from '../../hooks';
 
 export default function MultiWorkspaceTab() {
+  const [currentWorkspace, setCurrentWorkspace] = useCurrentWorkspace();
+
+  // When in use, ensure that currentWorkspace is always null
+  React.useEffect(() => {
+    if (currentWorkspace) {
+      setCurrentWorkspace(null);
+    }
+  }, [currentWorkspace, setCurrentWorkspace]);
+
   return (
-    <>
+    <div data-re-earthbar-workspace-tab-zone>
       <EarthbarTab>
-        <EarthbarTabLabel data-react-earthstar-earthbar-author-tab>
+        <EarthbarTabLabel data-re-earthbar-author-tab>
           {'Workspaces'}
         </EarthbarTabLabel>
         <MultiWorkspaceManagerPanel />
       </EarthbarTab>
-      <AddWorkspaceTab />
-    </>
+    </div>
   );
 }

@@ -1,12 +1,17 @@
 {
-  "version": "1.0.0-preview.13",
+  "version": "2.0.0",
+  "description": "A React toolkit for making collaborative, offline-first apps for small groups.",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/earthstar-project/react-earthstar"
+  },
+  "keywords": ["react", "decentralized", "p2p", "distributed", "private", "earthstar"],
   "license": "AGPL-3.0",
   "main": "dist/index.js",
   "typings": "dist/index.d.ts",
   "files": [
     "dist",
     "src",
-    "styles.css",
     "styles"
   ],
   "engines": {
@@ -19,10 +24,10 @@
     "lint": "tsdx lint",
     "prepare": "tsdx build",
     "components-example": "parcel examples/components/index.html",
-    "earthbar-example": "parcel examples/earthbar/index.html --port 2345"
+    "earthbar-example": "parcel examples/earthbar/index.html"
   },
   "peerDependencies": {
-    "earthstar": "^5.7.4",
+    "earthstar": "^6.3.1",
     "react": "~16.13.1"
   },
   "husky": {
@@ -44,9 +49,10 @@
     "@types/jest": "^26.0.14",
     "@types/react-dom": "^16.9.8",
     "babel-jest": "^26.5.2",
-    "earthstar": "^5.7.4",
+    "earthstar": "^6.3.1",
     "eslint-plugin-react-hooks": "^4.1.2",
     "husky": "^4.3.0",
+    "jest-localstorage-mock": "^2.4.6",
     "parcel": "^1.12.4",
     "react": "~16.13.1",
     "react-dom": "^16.13.1",
@@ -63,6 +69,7 @@
   "dependencies": {
     "@reach/alert": "^0.11.2",
     "@reach/auto-id": "^0.11.2",
+    "@reach/combobox": "^0.12.1",
     "@reach/descendants": "0.11.2",
     "@reach/utils": "^0.11.2",
     "use-deep-compare-effect": "^1.4.0"

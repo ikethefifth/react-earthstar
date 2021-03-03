@@ -1,33 +1,22 @@
-import React from 'react';
-import { EarthbarTabPanel } from './Earthbar';
+import * as React from 'react';
+import { useCurrentWorkspace } from '../../hooks';
+import { EarthbarContext } from './contexts';
+import EarthbarTabPanel from './EarthbarTabPanel';
 import { WorkspaceOptions } from './WorkspaceOptions';
-import { InvitationRedemptionForm, SyncingCheckbox } from '..';
-import { useCurrentWorkspace } from '../..';
 
-export default function WorkspaceManager() {
-  const [currentWorkspace, setCurrentWorkspace] = useCurrentWorkspace();
+export default function WorkspaceManagerPanel() {
+  const { setActiveIndex, setFocusedIndex } = React.useContext(EarthbarContext);
+  const [currentWorkspace] = useCurrentWorkspace();
 
-  return (
-    <EarthbarTabPanel data-react-earthstar-workspace-manager-panel>
-      {currentWorkspace ? (
-        <>
-          <h2>{currentWorkspace}</h2>
-          <SyncingCheckbox />
-          <hr />
-          <WorkspaceOptions />
-        </>
-      ) : (
-        <>
-          <h2>{'Join a workspace'}</h2>
-          <InvitationRedemptionForm
-            onRedeem={workspace => {
-              setTimeout(() => {
-                setCurrentWorkspace(workspace);
-              });
-            }}
-          />
-        </>
-      )}
+  return currentWorkspace ? (
+    <EarthbarTabPanel data-re-workspace-manager-panel>
+      <WorkspaceOptions
+        workspaceAddress={currentWorkspace}
+        onRemove={() => {
+          setActiveIndex(-1);
+          setFocusedIndex(-1);
+        }}
+      />
     </EarthbarTabPanel>
-  );
+  ) : null;
 }

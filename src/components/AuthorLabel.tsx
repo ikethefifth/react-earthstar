@@ -1,4 +1,4 @@
-import React from 'react';
+import * as React from 'react';
 import { getAuthorShortName } from '../util';
 
 export default function AuthorLabel({
@@ -8,7 +8,7 @@ export default function AuthorLabel({
   return (
     <span
       {...props}
-      data-react-earthstar-author-label
+      data-re-author-label
       title={address}
     >{`@${getAuthorShortName(address)}`}</span>
   );

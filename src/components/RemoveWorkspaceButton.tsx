@@ -1,36 +1,33 @@
-import React from 'react';
-import { useCurrentWorkspace, useRemoveWorkspace } from '../hooks';
+import * as React from 'react';
+import { useRemoveWorkspace } from '../hooks';
 
 export default function RemoveWorkspaceButton({
   workspaceAddress,
   children,
   ...props
-}: { workspaceAddress?: string } & React.HTMLAttributes<HTMLButtonElement>) {
+}: { workspaceAddress: string } & React.HTMLAttributes<HTMLButtonElement>) {
   const remove = useRemoveWorkspace();
-  const [currentWorkspace] = useCurrentWorkspace();
-
-  const address = workspaceAddress || currentWorkspace;
 
   return (
     <button
-      data-react-earthstar-remove-workspace-button
-      data-react-earthstar-button
+      data-re-remove-workspace-button
+      data-re-button
       {...props}
-      onClick={() => {
-        if (!address) {
-          return;
-        }
-
+      onClick={event => {
         const isSure = window.confirm(
-          `Are you sure you want to remove ${address} from your workspaces?`
+          `Are you sure you want to remove ${workspaceAddress} from your workspaces?`
         );
 
+        if (isSure && props.onClick) {
+          props.onClick(event);
+        }
+
         if (isSure) {
-          remove(address);
+          remove(workspaceAddress);
         }
       }}
     >
-      {children || `Remove ${address}`}
+      {`Forget ${workspaceAddress}`}
     </button>
   );
 }

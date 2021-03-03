@@ -1,5 +1,5 @@
-import React from 'react';
-import { useCurrentWorkspace, useWorkspaces } from '../';
+import * as React from 'react';
+import { useCurrentWorkspace, useWorkspaces } from '../hooks';
 
 export default function WorkspaceSelect() {
   const workspaces = useWorkspaces();
@@ -8,17 +8,17 @@ export default function WorkspaceSelect() {
   const selectValue = currentWorkspace || 'NONE';
 
   return (
-    <div data-react-earthstar-current-workspace-select-form>
+    <div data-re-current-workspace-select-form>
       <label
-        data-react-earthstar-current-workspace-select-label
-        data-react-earthstar-label
+        data-re-current-workspace-select-label
+        data-re-label
         htmlFor={'react-earthstar-current-workspace-select'}
       >
         {'Current Workspace'}
       </label>
       <select
-        data-react-earthstar-current-workspace-select-input
-        data-react-earthstar-select
+        data-re-current-workspace-select-input
+        data-re-select
         id={'react-earthstar-current-workspace-select'}
         value={selectValue}
         onChange={e =>
@@ -26,16 +26,15 @@ export default function WorkspaceSelect() {
         }
       >
         <option
-          data-react-earthstar-current-workspace-select-option
+          data-re-current-workspace-select-option
           key={'none'}
           value={'NONE'}
         >
           {'No workspace'}
         </option>
-
         {workspaces.map(address => (
           <option
-            data-react-earthstar-current-workspace-select-option
+            data-re-current-workspace-select-option
             key={address}
             value={address}
           >

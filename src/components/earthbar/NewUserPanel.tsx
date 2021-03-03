@@ -1,32 +1,35 @@
-import React from 'react';
-import { EarthbarTabPanel } from './Earthbar';
-import { NewKeypairForm, AuthorKeypairUpload } from '../../index';
+import * as React from 'react';
+import EarthbarTabPanel from './EarthbarTabPanel';
+import AuthorKeypairForm from '../AuthorKeypairForm';
+import AuthorKeypairUpload from '../AuthorKeypairUpload';
+import NewKeypairForm from '../NewKeypairForm';
+import {
+  CanIChangeMyNickname,
+  CanIResetMySecret,
+  WhatIsAnAuthorIdentity,
+} from '../guidance/guidances';
 
 export default function NewUserPanel() {
   return (
     <EarthbarTabPanel data-react-eartshar-new-user-panel>
-      <section data-react-earthstar-new-user-panel-make-section>
-        <h1 data-react-earthstar-new-user-panel-make-section-title>
-          {'Make a new identity'}
+      <section data-re-new-user-panel-make-section>
+        <h1 data-re-new-user-panel-make-section-title>
+          {'Make a new author identity'}
         </h1>
         <NewKeypairForm />
-        <p data-react-earthstar-new-user-panel-make-section-note>
-          {
-            'A new, unique identity will be created for you. A keypair.json file which you can use to prove your identity will be generated and downloaded to your device.'
-          }
+        <p>
+          And be sure to <b>save your new identity on the next screen!</b>
         </p>
-        <p data-react-earthstar-new-user-panel-make-section-note>
-          {
-            'Keep this file somewhere safe, like a password manager! If you lose it, you can’t log in and it can’t be recovered.'
-          }
-        </p>
+        <WhatIsAnAuthorIdentity />
+        <CanIChangeMyNickname />
       </section>
       <hr />
-      <section data-react-earthstar-new-user-panel-login-section>
-        <h1 data-react-earthstar-new-user-panel-login-section-title>
-          {'Log in'}
-        </h1>
+      <section data-re-new-user-panel-login-section>
+        <h1 data-re-new-user-panel-login-section-title>{'Log in'}</h1>
+        <AuthorKeypairForm />
+        <hr />
         <AuthorKeypairUpload />
+        <CanIResetMySecret />
       </section>
     </EarthbarTabPanel>
   );

@@ -1,142 +1,28 @@
-import React from 'react';
+import * as React from 'react';
 import {
   AuthorKeypair,
-  IStorage,
-  StorageMemory,
   ValidatorEs4,
-  syncLocalAndHttp,
-  QueryOpts,
+  Query,
   Document,
   isErr,
   EarthstarError,
   WriteResult,
   ValidationError,
   WriteEvent,
-  OnePubOneWorkspaceSyncer,
+  IStorageAsync,
+  StorageToAsync,
+  StorageLocalStorage,
+  syncLocalAndHttp,
 } from 'earthstar';
 import useDeepCompareEffect from 'use-deep-compare-effect';
-
-const StorageContext = React.createContext<{
-  storages: Record<string, IStorage>; // workspace address --> IStorage instance
-  setStorages: React.Dispatch<React.SetStateAction<Record<string, IStorage>>>;
-}>({ storages: {}, setStorages: () => {} });
-
-const PubsContext = React.createContext<{
-  pubs: Record<string, string[]>; // workspace address --> pub urls
-  setPubs: React.Dispatch<React.SetStateAction<Record<string, string[]>>>;
-}>({ pubs: {}, setPubs: () => {} });
-
-const CurrentAuthorContext = React.createContext<{
-  currentAuthor: AuthorKeypair | null;
-  setCurrentAuthor: React.Dispatch<React.SetStateAction<AuthorKeypair | null>>;
-}>({ currentAuthor: null, setCurrentAuthor: () => {} });
-
-const CurrentWorkspaceContext = React.createContext<{
-  currentWorkspace: null | string;
-  setCurrentWorkspace: React.Dispatch<React.SetStateAction<string | null>>;
-}>({
-  currentWorkspace: null,
-  setCurrentWorkspace: () => {},
-});
-
-const IsLiveContext = React.createContext<{
-  isLive: boolean;
-  setIsLive: React.Dispatch<React.SetStateAction<boolean>>;
-}>({
-  isLive: true,
-  setIsLive: () => {},
-});
-
-export function EarthstarPeer({
-  initWorkspaces = [],
-  initPubs = {},
-  initCurrentAuthor = null,
-  initCurrentWorkspace = null,
-  initIsLive = true,
-  children,
-}: {
-  initWorkspaces?: IStorage[];
-  initPubs?: Record<string, string[]>;
-  initCurrentAuthor?: AuthorKeypair | null;
-  initCurrentWorkspace?: string | null;
-  initIsLive?: boolean;
-  children: React.ReactNode;
-}) {
-  const [storages, setStorages] = React.useState(
-    initWorkspaces.reduce<Record<string, IStorage>>((acc, storage) => {
-      return { ...acc, [storage.workspace]: storage };
-    }, {})
-  );
-
-  const [pubs, setPubs] = React.useState(initPubs);
-
-  const [currentAuthor, setCurrentAuthor] = React.useState(initCurrentAuthor);
-
-  const [currentWorkspace, setCurrentWorkspace] = React.useState(
-    initCurrentWorkspace && storages[initCurrentWorkspace]
-      ? initCurrentWorkspace
-      : null
-  );
-  const [isLive, setIsLive] = React.useState(initIsLive);
-
-  return (
-    <StorageContext.Provider value={{ storages, setStorages }}>
-      <PubsContext.Provider value={{ pubs, setPubs }}>
-        <CurrentAuthorContext.Provider
-          value={{ currentAuthor, setCurrentAuthor }}
-        >
-          <CurrentWorkspaceContext.Provider
-            value={{ currentWorkspace, setCurrentWorkspace }}
-          >
-            <IsLiveContext.Provider value={{ isLive, setIsLive }}>
-              {children}
-              {Object.keys(storages).map(workspaceAddress => (
-                <LiveSyncer
-                  key={workspaceAddress}
-                  workspaceAddress={workspaceAddress}
-                />
-              ))}
-            </IsLiveContext.Provider>
-          </CurrentWorkspaceContext.Provider>
-        </CurrentAuthorContext.Provider>
-      </PubsContext.Provider>
-    </StorageContext.Provider>
-  );
-}
-
-function LiveSyncer({ workspaceAddress }: { workspaceAddress: string }) {
-  const [isLive] = useIsLive();
-  const [storages] = useStorages();
-  const [pubs] = useWorkspacePubs(workspaceAddress);
-
-  React.useEffect(() => {
-    const syncers = pubs.map(
-      pubUrl => new OnePubOneWorkspaceSyncer(storages[workspaceAddress], pubUrl)
-    );
-
-    if (!isLive) {
-      syncers.forEach(syncer => {
-        syncer.stopPushStream();
-        syncer.stopPullStream();
-      });
-    } else {
-      // Start streaming when isLive changes to true
-      syncers.forEach(syncer => {
-        syncer.syncOnceAndContinueLive();
-      });
-    }
-
-    // On cleanup (unmount, value of syncers changes) stop all syncers from pulling and pushing
-    return () => {
-      syncers.forEach(syncer => {
-        syncer.stopPullStream();
-        syncer.stopPushStream();
-      });
-    };
-  }, [pubs, isLive, workspaceAddress, storages]);
-
-  return null;
-}
+import { getLocalStorage, makeStorageKey, useMemoQueryOpts } from './util';
+import {
+  CurrentAuthorContext,
+  CurrentWorkspaceContext,
+  IsLiveContext,
+  PubsContext,
+  StorageContext,
+} from './contexts';
 
 export function useWorkspaces() {
   const [storages] = useStorages();
@@ -154,11 +40,12 @@ export function useAddWorkspace() {
       }
 
       try {
-        const newStorage = new StorageMemory([ValidatorEs4], address);
+        const newStorage = new StorageLocalStorage([ValidatorEs4], address);
+        const newAsyncedStorage = new StorageToAsync(newStorage, 0);
 
         setStorages(prev => ({
           ...prev,
-          [address]: newStorage,
+          [address]: newAsyncedStorage,
         }));
 
         return void 0;
@@ -174,27 +61,50 @@ export function useAddWorkspace() {
   );
 }
 
-export function useRemoveWorkspace() {
+export function useRemoveWorkspace(): (address: string) => Promise<void> {
   const [storages, setStorages] = useStorages();
+  const [pubs, setPubs] = usePubs();
   const [currentWorkspace, setCurrentWorkspace] = useCurrentWorkspace();
 
   return React.useCallback(
     (address: string) => {
-      if (currentWorkspace === address) {
-        setCurrentWorkspace(null);
-      }
+      return new Promise<void>((resolve, reject) => {
+        if (currentWorkspace === address) {
+          setCurrentWorkspace(null);
+        }
 
-      setStorages(prev => {
-        const prevCopy = { ...prev };
+        setStorages(prev => {
+          const prevCopy = { ...prev };
 
-        delete prevCopy[address];
+          delete prevCopy[address];
 
-        return prevCopy;
+          return prevCopy;
+        });
+
+        const storage = storages[address];
+
+        if (storage) {
+          const nextPubs = { ...pubs };
+          delete nextPubs[address];
+          setPubs(nextPubs);
+
+          return storage
+            .close({ delete: true })
+            .then(resolve)
+            .catch(reject);
+        }
+
+        return reject();
       });
-
-      storages[address]?.deleteAndClose();
     },
-    [setStorages, currentWorkspace, setCurrentWorkspace, storages]
+    [
+      setStorages,
+      currentWorkspace,
+      setCurrentWorkspace,
+      storages,
+      pubs,
+      setPubs,
+    ]
   );
 }
 
@@ -299,64 +209,30 @@ export function useSync() {
   );
 }
 
-export function usePaths(query: QueryOpts, workspaceAddress?: string) {
-  const {
-    pathPrefix,
-    lowPath,
-    highPath,
-    contentIsEmpty,
-    includeHistory,
-    participatingAuthor,
-    path,
-    versionsByAuthor,
-    now,
-    limit,
-  } = query;
-
+export function usePaths(query: Query, workspaceAddress?: string): string[] {
   const storage = useStorage(workspaceAddress);
 
   if (!storage) {
     console.warn(`Couldn't find workspace with address ${workspaceAddress}`);
   }
 
-  const queryMemo: QueryOpts = React.useMemo(
-    () => ({
-      pathPrefix,
-      lowPath,
-      highPath,
-      contentIsEmpty,
-      includeHistory,
-      participatingAuthor,
-      path,
-      versionsByAuthor,
-      now,
-      limit,
-    }),
-    [
-      pathPrefix,
-      lowPath,
-      highPath,
-      contentIsEmpty,
-      includeHistory,
-      participatingAuthor,
-      path,
-      versionsByAuthor,
-      now,
-      limit,
-    ]
-  );
+  const queryMemo = useMemoQueryOpts(query);
 
-  const paths = React.useMemo(() => storage?.paths(queryMemo) || [], [
-    queryMemo,
-    storage,
-  ]);
-
-  const [localPaths, setLocalPaths] = React.useState(paths);
+  const [localPaths, setLocalPaths] = React.useState<string[]>([]);
 
   useDeepCompareEffect(() => {
-    const paths = storage?.paths(query) || [];
-    setLocalPaths(paths);
-  }, [query, setLocalPaths]);
+    let ignore = false;
+
+    storage?.paths(queryMemo).then(pathResult => {
+      if (!ignore) {
+        setLocalPaths(pathResult);
+      }
+    });
+
+    return () => {
+      ignore = true;
+    };
+  }, [storage, queryMemo, setLocalPaths]);
 
   const onWrite = React.useCallback(
     event => {
@@ -365,47 +241,36 @@ export function usePaths(query: QueryOpts, workspaceAddress?: string) {
       }
 
       if (
-        queryMemo.pathPrefix &&
-        !event.document.path.startsWith(queryMemo.pathPrefix)
+        queryMemo.pathStartsWith &&
+        !event.document.path.startsWith(queryMemo.pathStartsWith)
       ) {
         return;
       }
 
       if (
-        queryMemo.lowPath &&
-        queryMemo.lowPath <= event.document.path === false
+        queryMemo.pathEndsWith &&
+        !event.document.path.endsWith(queryMemo.pathEndsWith)
       ) {
         return;
       }
 
-      if (
-        queryMemo.highPath &&
-        event.document.path < queryMemo.highPath === false
-      ) {
-        return;
-      }
-
-      if (queryMemo.contentIsEmpty && event.document.content !== '') {
-        return;
-      }
-
-      if (queryMemo.contentIsEmpty === false && event.document.content === '') {
-        return;
-      }
-
-      setLocalPaths(storage.paths(queryMemo));
+      storage.paths(queryMemo).then(result => {
+        setLocalPaths(result);
+      });
     },
     [queryMemo, storage]
   );
 
   useSubscribeToStorages({
     workspaces: storage ? [storage.workspace] : undefined,
-    includeHistory: query.includeHistory,
+    history: query.history,
     onWrite,
   });
 
   return localPaths;
 }
+
+type QueryStatus = 'idle' | 'pending' | 'success' | 'error';
 
 export function useDocument(
   path: string,
@@ -415,20 +280,39 @@ export function useDocument(
   (
     content: string,
     deleteAfter?: number | null | undefined
-  ) => WriteResult | ValidationError,
-  () => void
+  ) => Promise<WriteResult | ValidationError>,
+  () => Promise<WriteResult | ValidationError>,
+  QueryStatus
 ] {
   const [currentAuthor] = useCurrentAuthor();
 
   const storage = useStorage(workspaceAddress);
 
-  const [localDocument, setLocalDocument] = React.useState(
-    storage?.getDocument(path)
-  );
+  const [localDocument, setLocalDocument] = React.useState<
+    Document | undefined
+  >(undefined);
+  const [status, setStatus] = React.useState<QueryStatus>('idle');
 
   React.useEffect(() => {
-    setLocalDocument(storage?.getDocument(path));
-  }, [workspaceAddress, path, storage]);
+    let ignore = false;
+
+    setStatus('pending');
+    storage
+      ?.getDocument(path)
+      .then(doc => {
+        if (!ignore) {
+          setLocalDocument(doc);
+          setStatus('success');
+        }
+      })
+      .catch(() => {
+        setStatus('error');
+      });
+
+    return () => {
+      ignore = true;
+    };
+  }, [storage, path]);
 
   const onWrite = React.useCallback(
     event => {
@@ -445,69 +329,126 @@ export function useDocument(
 
   const set = React.useCallback(
     (content: string, deleteAfter?: number | null | undefined) => {
-      if (!storage) {
-        return new ValidationError(
-          `useDocument couldn't get the workspace ${workspaceAddress}`
-        );
-      }
+      return new Promise<ValidationError | WriteResult>((resolve, reject) => {
+        if (!storage) {
+          return reject(
+            new ValidationError(
+              `useDocument couldn't get the workspace ${workspaceAddress}`
+            )
+          );
+        }
 
-      if (!currentAuthor) {
-        console.warn('Tried to set a document when no current author was set.');
-        return new ValidationError(
-          'Tried to set a document when no current author was set.'
-        );
-      }
+        if (!currentAuthor) {
+          console.warn(
+            'Tried to set a document when no current author was set.'
+          );
+          return reject(
+            new ValidationError(
+              'Tried to set a document when no current author was set.'
+            )
+          );
+        }
 
-      return storage.set(currentAuthor, {
-        format: 'es.4',
-        path,
-        content,
-        deleteAfter,
+        storage
+          .set(currentAuthor, {
+            format: 'es.4',
+            path,
+            content,
+            deleteAfter,
+          })
+          .then(result => {
+            if (isErr(result)) {
+              console.group();
+              console.warn(
+                `There was a problem setting the document at ${path}:`
+              );
+              console.warn(result.message);
+              console.groupEnd();
+              return reject(result);
+            }
+
+            return resolve(result);
+          });
       });
     },
     [path, currentAuthor, workspaceAddress, storage]
   );
 
   const deleteDoc = () => {
-    set('');
+    return set('');
   };
 
-  return [localDocument, set, deleteDoc];
+  return [localDocument, set, deleteDoc, status];
 }
 
-export function useDocuments(query: QueryOpts, workspaceAddress?: string) {
+export function useDocuments(
+  query: Query,
+  workspaceAddress?: string
+): Document[] {
   const storage = useStorage(workspaceAddress);
-  const fetchedDocs =
-    storage?.paths(query).map(path => storage?.getDocument(path) as Document) ||
-    [];
-  const [docs, setDocs] = React.useState(fetchedDocs);
 
-  useDeepCompareEffect(() => {
-    setDocs(
+  const [docs, setDocs] = React.useState<Document[]>([]);
+
+  const queryMemo = useMemoQueryOpts(query);
+
+  React.useEffect(() => {
+    let ignore = false;
+
+    storage
+      ?.paths(queryMemo)
+      .then(pathsResult => {
+        return Promise.all(pathsResult.map(path => storage?.getDocument(path)));
+      })
+      .then(docsResult => {
+        if (!ignore) {
+          setDocs(
+            docsResult.filter((doc): doc is Document => doc !== undefined)
+          );
+        }
+      });
+
+    return () => {
+      ignore = true;
+    };
+  }, [storage, queryMemo]);
+
+  const onWrite = React.useCallback(
+    event => {
       storage
-        ?.paths(query)
-        .map(path => storage?.getDocument(path) as Document) || []
-    );
-  }, [storage, query, setDocs]);
+        ?.paths(queryMemo)
+        .then(pathsResult => {
+          if (!pathsResult.includes(event.document.path)) {
+            return;
+          }
+
+          return Promise.all(
+            pathsResult.map(path => storage?.getDocument(path))
+          );
+        })
+        .then(docsResult => {
+          if (docsResult === undefined) {
+            return;
+          }
+
+          setDocs(
+            docsResult.filter((doc): doc is Document => doc !== undefined)
+          );
+        });
+    },
+    [storage, setDocs, queryMemo]
+  );
 
   useSubscribeToStorages({
     workspaces: storage ? [storage.workspace] : undefined,
-    onWrite: event => {
-      const paths = storage?.paths(query);
-      if (paths?.includes(event.document.path)) {
-        const fetchedDocs =
-          paths?.map(path => storage?.getDocument(path) as Document) || [];
-        setDocs(fetchedDocs);
-      }
-    },
+    onWrite,
   });
 
   return docs;
 }
 
 export function useStorages(): [
-  Record<string, IStorage>,
-  React.Dispatch<React.SetStateAction<Record<string, IStorage>>>
+  Record<string, IStorageAsync>,
+  React.Dispatch<React.SetStateAction<Record<string, IStorageAsync>>>
 ] {
   const { storages, setStorages } = React.useContext(StorageContext);
 
@@ -517,14 +458,14 @@ export function useStorages(): [
 export function useSubscribeToStorages(options: {
   workspaces?: string[];
   paths?: string[];
-  includeHistory?: boolean;
+  history?: Query['history'];
   onWrite: (event: WriteEvent) => void;
 }) {
   const [storages] = useStorages();
 
   useDeepCompareEffect(() => {
     const onWrite = (event: WriteEvent) => {
-      if (event.isLatest === false && options.includeHistory !== true) {
+      if (event.isLatest === false && options.history !== 'all') {
         return;
       }
 
@@ -636,11 +577,17 @@ export function useMakeInvitation(
   workspaceAddress?: string
 ) {
   const [pubs] = useWorkspacePubs(workspaceAddress);
+  const [currentWorkspace] = useCurrentWorkspace();
+  const address = workspaceAddress || currentWorkspace;
 
   const pubsToUse = pubs.filter(pubUrl => !excludedPubs.includes(pubUrl));
   const pubsString = pubsToUse.map(pubUrl => `&pub=${pubUrl}`).join('');
 
-  return `earthstar:///?workspace=${workspaceAddress}${pubsString}&v=1`;
+  if (!address) {
+    return "Couldn't create invitation code!";
+  }
+
+  return `earthstar:///?workspace=${address}${pubsString}&v=1`;
 }
 
 export function useIsLive(): [
@@ -658,5 +605,39 @@ export function useStorage(workspaceAddress?: string) {
 
   const address = workspaceAddress || currentWorkspace;
 
-  return address ? storages[address] : null;
+  return React.useMemo(() => {
+    return address ? storages[address] : null;
+  }, [address, storages]);
+}
+
+export function useLocalStorageEarthstarSettings(storageKey: string) {
+  const lsAuthorKey = makeStorageKey(storageKey, 'current-author');
+  const lsPubsKey = makeStorageKey(storageKey, 'pubs');
+  const lsWorkspacesKey = makeStorageKey(storageKey, 'workspaces');
+  const lsCurrentWorkspaceKey = makeStorageKey(storageKey, 'current-workspace');
+  const lsIsLiveKey = makeStorageKey(storageKey, 'is-live');
+
+  // load the initial state from localStorage
+  const workspacesInStorage = getLocalStorage<string[]>(lsWorkspacesKey);
+  const initPubs = getLocalStorage<Record<string, string[]>>(lsPubsKey);
+  const initCurrentAuthor = getLocalStorage<AuthorKeypair>(lsAuthorKey);
+  const initCurrentWorkspace = getLocalStorage<string>(lsCurrentWorkspaceKey);
+  const initIsLive = getLocalStorage<boolean>(lsIsLiveKey);
+
+  const initWorkspaces = workspacesInStorage
+    ? workspacesInStorage.map(workspaceAddress => {
+        return new StorageToAsync(
+          new StorageLocalStorage([ValidatorEs4], workspaceAddress),
+          0
+        );
+      })
+    : null;
+
+  return {
+    ...(initWorkspaces ? { initWorkspaces } : {}),
+    ...(initPubs ? { initPubs } : {}),
+    ...(initCurrentAuthor ? { initCurrentAuthor } : {}),
+    ...(initCurrentWorkspace ? { initCurrentWorkspace } : {}),
+    ...(initIsLive ? { initIsLive } : {}),
+  };
 }

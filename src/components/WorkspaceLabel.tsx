@@ -9,7 +9,7 @@ Given a workspace address, returns an element which:
 
 */
 
-import React from 'react';
+import * as React from 'react';
 import { getWorkspaceName } from '../util';
 
 export default function WorkspaceLabel({
@@ -19,7 +19,7 @@ export default function WorkspaceLabel({
   return (
     <span
       {...props}
-      data-react-earthstar-workspace-label
+      data-re-workspace-label
       title={address}
     >{`+${getWorkspaceName(address)}`}</span>
   );

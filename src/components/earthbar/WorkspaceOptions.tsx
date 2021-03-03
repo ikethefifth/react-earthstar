@@ -1,33 +1,106 @@
-import React from 'react';
-import { PubEditor, RemoveWorkspaceButton, InvitationCreatorForm } from '..';
+import * as React from 'react';
+import {
+  PubEditor,
+  RemoveWorkspaceButton,
+  InvitationCreatorForm,
+  SyncingCheckbox,
+  DeleteMyDataForm,
+} from '..';
+import { WhatIsAPub } from '../guidance/guidances';
 
 export function WorkspaceOptions({
   workspaceAddress,
+  onRemove,
 }: {
-  workspaceAddress?: string;
+  workspaceAddress: string;
+  onRemove?: () => void;
 }) {
+  const [isDangerZoneShown, setIsDangerZoneShown] = React.useState(false);
+
   return (
-    <div data-react-earthstar-earthbar-workspace-options>
-      <details data-react-earthstar-details>
-        <summary data-react-earthstar-summary>{'Pubs'}</summary>
-        <p>{'Control where this workspace syncs its data to and from.'}</p>
+    <div data-re-earthbar-workspace-options>
+      <section data-re-section>
+        <SyncingCheckbox />
+      </section>
+      <hr />
+      <section data-re-section>
+        <h1>{'Pub Servers'}</h1>
         <PubEditor workspaceAddress={workspaceAddress} />
-      </details>
+        <WhatIsAPub />
+      </section>
       <hr />
-      <details data-react-earthstar-details>
-        <summary data-react-earthstar-summary>{'Invite others'}</summary>
-        <InvitationCreatorForm workspaceAddress={workspaceAddress} />
-      </details>
-      <hr />
-      <details data-react-earthstar-details>
-        <summary data-react-earthstar-summary>{'Danger Zone'}</summary>
+      <section data-re-section>
+        <h1>{'Invite People'}</h1>
         <p>
-          {
-            'Your local copy of the workspace will be removed, but will remain with other pubs and peers it has been synced to.'
-          }
+          {'Send this code to your friends so they can join the workspace.'}
         </p>
-        <RemoveWorkspaceButton />
-      </details>
+        <InvitationCreatorForm workspaceAddress={workspaceAddress} />
+      </section>
+      <hr />
+      {isDangerZoneShown ? (
+        <>
+          <section data-re-section>
+            <h1>{'Forget this workspace'}</h1>
+            <RemoveWorkspaceButton
+              workspaceAddress={workspaceAddress}
+              onClick={onRemove}
+            />
+            <details data-re-details>
+              <summary data-re-summary>
+                {'Will this remove the workspace everywhere?'}
+              </summary>
+              <div data-re-details-content>
+                <p>
+                  {
+                    'This button will remove your copy of the workspace from this app, but it will remain with apps, pubs, and other users it has synced with.'
+                  }
+                </p>
+                <p>
+                  {
+                    "It's not possible to globally delete a workspace, but you can delete your own data out of a workspace."
+                  }
+                </p>
+              </div>
+            </details>
+          </section>
+          <hr />
+          <section data-re-section>
+            <h1>{'Delete my data'}</h1>
+            <DeleteMyDataForm workspaceAddress={workspaceAddress} />
+            <details data-re-details>
+              <summary data-re-summary>
+                {'What will deleting my data do?'}
+              </summary>
+              <div data-re-details-content>
+                <p>
+                  {
+                    'Deleting your data will overwrite all the documents you created with empty strings, which is the usual way to "delete" things from Earthstar. These deletions will propagate across the network, erasing your content from everyone in the workspace the next time they sync.'
+                  }
+                </p>
+                <p>
+                  {
+                    'Metadata about your documents will be left behind, including their timestamps and their paths (e.g. filenames). Only the content will be deleted.'
+                  }
+                </p>
+                <p>
+                  {
+                    'If you do this, make sure you give Earthstar a chance to sync with pubs and get your empty versions out there, before you turn off your computer or log out of the workspace.'
+                  }
+                </p>
+              </div>
+            </details>
+          </section>
+        </>
+      ) : (
+        <button
+          data-re-button
+          onClick={() => {
+            setIsDangerZoneShown(true);
+          }}
+        >
+          {'Data deletion settings'}
+        </button>
+      )}
     </div>
   );
 }
